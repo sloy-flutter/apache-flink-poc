@@ -19,7 +19,13 @@
 package com.flutter;
 
 
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
@@ -51,15 +57,29 @@ public class DataStreamJob {
 		// to building Flink applications.
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		FlinkKafkaConsumer<String> flinkKafkaConsumer = createStringConsumerForSourceTopic();
+		KafkaSource<String> source = KafkaSource.<String>builder()
+				.setBootstrapServers(BOOTSTRAP_SERVERS)
+				.setTopics(SOURCE_TOPIC)
+				.setGroupId(CONSUMER_GROUP)
+				.setStartingOffsets(OffsetsInitializer.earliest())
+				.setValueOnlyDeserializer(new SimpleStringSchema())
+				.build();
 
-		DataStream<String> stringInputSteam = env.addSource(flinkKafkaConsumer);
+		DataStream<String> stringInputSteam = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
 
-		FlinkKafkaProducer<String> flinkKafkaProducer = createStringProducerForSinkTopic();
+		KafkaSink<String> sink = KafkaSink.<String>builder()
+				.setBootstrapServers(BOOTSTRAP_SERVERS)
+				.setRecordSerializer(KafkaRecordSerializationSchema.builder()
+						.setTopic(SINK_TOPIC)
+						.setValueSerializationSchema(new SimpleStringSchema())
+						.build()
+				)
+				.setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
+				.build();
 
-		stringInputSteam.addSink(flinkKafkaProducer);
+		stringInputSteam.sinkTo(sink);
 		// Execute program, beginning computation.
-		env.execute("Flink Java API Skeleton");
+		env.execute("Flink Kafka POC");
 	}
 
 	private static FlinkKafkaConsumer<String> createStringConsumerForSourceTopic(){

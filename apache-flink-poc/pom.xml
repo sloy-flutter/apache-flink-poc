@@ -30,10 +30,11 @@ under the License.
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<flink.version>1.16.1</flink.version>
-		<target.java.version>1.8</target.java.version>
+		<target.java.version>11</target.java.version>
 		<scala.binary.version>2.12</scala.binary.version>
 		<maven.compiler.source>${target.java.version}</maven.compiler.source>
 		<maven.compiler.target>${target.java.version}</maven.compiler.target>
+		<maven.compiler.release>${target.java.version}</maven.compiler.release>
 		<log4j.version>2.17.1</log4j.version>
 		<kafka.version>3.4.0</kafka.version>
 	</properties>
@@ -74,8 +75,8 @@ under the License.
 		</dependency>
 		<dependency>
 			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-connector-kafka_2.11</artifactId>
-			<version>1.11.6</version>
+			<artifactId>flink-connector-kafka</artifactId>
+			<version>${flink.version}</version>
 		</dependency>
 
 		<dependency>
