@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  zookeeper:
+    image: zookeeper:3.5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 250M
+    ports:
+      - "2181:2181"
+
+  kafka:
+    depends_on:
+      - zookeeper
+    image: wurstmeister/kafka:2.12-2.3.1
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 500M
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_PORT: "9092"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'EXTERNAL_PLAINTEXT:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_SECURITY_INTER_BROKER_PROTOCOL: 'PLAINTEXT'
+      KAFKA_CREATE_TOPICS: 'poc-source:1:1, poc-sink:1:1'
+
