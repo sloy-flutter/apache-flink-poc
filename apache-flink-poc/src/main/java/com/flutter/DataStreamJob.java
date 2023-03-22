@@ -18,7 +18,15 @@
 
 package com.flutter;
 
+
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+
+import java.util.Properties;
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -34,32 +42,35 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  */
 public class DataStreamJob {
 
+	private static final String SOURCE_TOPIC = "poc-source";
+	private static final String SINK_TOPIC = "poc-sink";
+	private static final String BOOTSTRAP_SERVERS = "localhost:9092";
+	private static final String CONSUMER_GROUP = "kafkaFlinkPOC";
 	public static void main(String[] args) throws Exception {
 		// Sets up the execution environment, which is the main entry point
 		// to building Flink applications.
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		/*
-		 * Here, you can start creating your execution plan for Flink.
-		 *
-		 * Start with getting some data from the environment, like
-		 * 	env.fromSequence(1, 10);
-		 *
-		 * then, transform the resulting DataStream<Long> using operations
-		 * like
-		 * 	.filter()
-		 * 	.flatMap()
-		 * 	.window()
-		 * 	.process()
-		 *
-		 * and many more.
-		 * Have a look at the programming guide:
-		 *
-		 * https://nightlies.apache.org/flink/flink-docs-stable/
-		 *
-		 */
+		FlinkKafkaConsumer<String> flinkKafkaConsumer = createStringConsumerForSourceTopic();
 
+		DataStream<String> stringInputSteam = env.addSource(flinkKafkaConsumer);
+
+		FlinkKafkaProducer<String> flinkKafkaProducer = createStringProducerForSinkTopic();
+
+		stringInputSteam.addSink(flinkKafkaProducer);
 		// Execute program, beginning computation.
 		env.execute("Flink Java API Skeleton");
+	}
+
+	private static FlinkKafkaConsumer<String> createStringConsumerForSourceTopic(){
+		Properties props = new Properties();
+		props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, DataStreamJob.BOOTSTRAP_SERVERS);
+		props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, DataStreamJob.CONSUMER_GROUP);
+
+		return new FlinkKafkaConsumer<>(DataStreamJob.SOURCE_TOPIC, new SimpleStringSchema(), props);
+	}
+
+	private static FlinkKafkaProducer<String> createStringProducerForSinkTopic(){
+		return new FlinkKafkaProducer<>(DataStreamJob.BOOTSTRAP_SERVERS, DataStreamJob.SINK_TOPIC, new SimpleStringSchema());
 	}
 }
