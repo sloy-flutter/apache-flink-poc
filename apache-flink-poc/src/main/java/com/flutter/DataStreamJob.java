@@ -81,16 +81,4 @@ public class DataStreamJob {
 		// Execute program, beginning computation.
 		env.execute("Flink Kafka POC");
 	}
-
-	private static FlinkKafkaConsumer<String> createStringConsumerForSourceTopic(){
-		Properties props = new Properties();
-		props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, DataStreamJob.BOOTSTRAP_SERVERS);
-		props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, DataStreamJob.CONSUMER_GROUP);
-
-		return new FlinkKafkaConsumer<>(DataStreamJob.SOURCE_TOPIC, new SimpleStringSchema(), props);
-	}
-
-	private static FlinkKafkaProducer<String> createStringProducerForSinkTopic(){
-		return new FlinkKafkaProducer<>(DataStreamJob.BOOTSTRAP_SERVERS, DataStreamJob.SINK_TOPIC, new SimpleStringSchema());
-	}
 }
