@@ -19,20 +19,23 @@
 package com.flutter;
 
 
+import com.flutter.serializers.BetTupleSerializer;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.builder.Tuple2Builder;
 import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-
-import java.util.Properties;
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -52,33 +55,50 @@ public class DataStreamJob {
 	private static final String SINK_TOPIC = "poc-sink";
 	private static final String BOOTSTRAP_SERVERS = "localhost:9092";
 	private static final String CONSUMER_GROUP = "kafkaFlinkPOC";
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 	public static void main(String[] args) throws Exception {
 		// Sets up the execution environment, which is the main entry point
 		// to building Flink applications.
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		KafkaSource<String> source = KafkaSource.<String>builder()
+		DataStream<String> stringInputSteam = env.fromSource(createKafkaSource(), WatermarkStrategy.noWatermarks(), "Kafka Source");
+		KeyedStream<Tuple2<String, Integer>, String> keyedStream =
+				stringInputSteam.map(DataStreamJob::mapToTuple)
+						.keyBy(betTuple -> betTuple.f0);
+
+		SingleOutputStreamOperator<Tuple2<String, Integer>> operator = keyedStream.sum(1);
+
+		operator.sinkTo(createKafkaSink());
+		// Execute program, beginning computation.
+		env.execute("Flink Kafka POC");
+	}
+
+	private static Tuple2<String, Integer> mapToTuple(String betString) throws JsonProcessingException {
+		JsonNode jsonNode = OBJECT_MAPPER.readTree(betString);
+
+		return new Tuple2Builder<String, Integer>()
+				.add(jsonNode.get("runnerName").asText(), jsonNode.get("liability").asInt())
+				.build()[0];
+	}
+
+	private static KafkaSource<String> createKafkaSource(){
+		return KafkaSource.<String>builder()
 				.setBootstrapServers(BOOTSTRAP_SERVERS)
 				.setTopics(SOURCE_TOPIC)
 				.setGroupId(CONSUMER_GROUP)
 				.setStartingOffsets(OffsetsInitializer.earliest())
 				.setValueOnlyDeserializer(new SimpleStringSchema())
 				.build();
-
-		DataStream<String> stringInputSteam = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
-
-		KafkaSink<String> sink = KafkaSink.<String>builder()
+	}
+	private static KafkaSink<Tuple2<String, Integer>> createKafkaSink(){
+		return KafkaSink.<Tuple2<String, Integer>>builder()
 				.setBootstrapServers(BOOTSTRAP_SERVERS)
 				.setRecordSerializer(KafkaRecordSerializationSchema.builder()
 						.setTopic(SINK_TOPIC)
-						.setValueSerializationSchema(new SimpleStringSchema())
+						.setValueSerializationSchema(new BetTupleSerializer())
 						.build()
 				)
 				.setDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
 				.build();
-
-		stringInputSteam.sinkTo(sink);
-		// Execute program, beginning computation.
-		env.execute("Flink Kafka POC");
 	}
 }
