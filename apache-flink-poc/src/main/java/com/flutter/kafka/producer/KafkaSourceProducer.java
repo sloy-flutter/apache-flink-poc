@@ -1,5 +1,6 @@
 package com.flutter.kafka.producer;
 
+import com.flutter.pojos.Bet;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -14,20 +15,20 @@ public class KafkaSourceProducer {
     private final static String SOURCE_TOPIC = "poc-source";
     private final static String BOOTSTRAP_SERVERS = "localhost:9092";
     private final static List<String> RUNNERS = Arrays.asList(
-            "Mr Muldon",
-            "Alnadam",
-            "Better Getalong",
-            "Vocal Duke",
-            "Hasty Brook",
-            "On To Victory",
-            "Hurlerontheditch",
-            "Malpas",
+//            "Mr Muldon",
+//            "Alnadam",
+//            "Better Getalong",
+//            "Vocal Duke",
+//            "Hasty Brook",
+//            "On To Victory",
+//            "Hurlerontheditch",
+//            "Malpas",
             "Faron",
             "Applaus"
     );
 
     public static void main(String[] args) {
-        runKafkaSourceProducer(100);
+        runKafkaSourceProducer(5);
     }
 
     private static void runKafkaSourceProducer(final int messageCount) {
@@ -63,25 +64,25 @@ public class KafkaSourceProducer {
     }
 
     private static String generateBet(){
-        return String.format("{selection:%s, liability:%d}", getRandomBetSelection(), getRandomBetLiability());
+        return new Bet(getRandomBetSelection(), getRandomBetLiability()).toString();
     }
 
     private static String getRandomBetSelection(){
         return RUNNERS.get(generateRandomNumber(RUNNERS.size()-1, 0));
     }
     private static int getRandomBetLiability(){
-        int maxLiability = 5000;
-        int minLiability = 1;
+        int maxLiability = 10;
+        int minLiability = 0;
         return generateRandomNumber(maxLiability, minLiability);
     }
     private static int getRandomSleepTime(){
         int maxSleep = 3000;
-        int minSleep = 1;
+        int minSleep = 0;
         return generateRandomNumber(maxSleep, minSleep);
     }
 
     private static int generateRandomNumber(int max, int min){
         Random r = new Random();
-        return r.nextInt(max-min);
+        return r.nextInt((max-min)+1);
     }
 }
